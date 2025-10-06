@@ -197,5 +197,5 @@ def update_dashboard(year_left, year_right):
     return map_left_src, map_right_src, pie_left, pie_right, metrics_left, metrics_right
 
 if __name__ == '__main__':
-    logger.info("Starting Dash application locally on port 8080")
-    app.run(host="0.0.0.0", port=8080, debug=True)  # Local development
+    logger.info("Starting Dash application locally on port 8080 - Access at http://localhost:8080")
+    app.run(host="0.0.0.0", port=8080, debug=True)
