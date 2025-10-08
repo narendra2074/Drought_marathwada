@@ -3,11 +3,12 @@ from dash import dcc, html, Input, Output, callback
 import pandas as pd
 import plotly.graph_objects as go
 import base64
-import urllib.request
-import os  # For environment variables (e.g., PORT for Render)
-import logging  # For logging debug/info messages
-from flask import Flask  # For explicit server control
-import gunicorn  # For production server hint (used by Render)
+import os
+import logging
+from flask import Flask
+import gunicorn
+from PIL import Image, ImageDraw, ImageFont  # For image generation
+import io
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 df = pd.read_csv('main_data.csv')
 years = sorted(df['year'].unique())
 
-app = dash.Dash(__name__, server=Flask(__name__))  # Use Flask server explicitly
+app = dash.Dash(__name__, server=Flask(__name__))
 
 # Define colors for categories
 colors = {
@@ -29,14 +30,42 @@ colors = {
     'Extreme_Drought': '#8B0000'
 }
 
-def get_image_base64(url):
+# Function to generate a static Marathwada map with district names
+def get_image_base64(year=None):  # Year parameter kept but ignored for static map
+    # Create a blank 300x300 image
+    img = Image.new('RGB', (300, 300), color='lightgray')
+    d = ImageDraw.Draw(img)
+    
     try:
-        with urllib.request.urlopen(url) as response:
-            img_data = response.read()
-        return f"data:image/jpeg;base64,{base64.b64encode(img_data).decode()}"
+        # Use default font (or install a TTF file like arial.ttf for better rendering)
+        font = ImageFont.load_default()  # Use ImageFont.truetype("arial.ttf", 12) if available
+        title = "Marathwada Region"
+        d.text((130, 10), title, fill='black', font=font)  # Title at top
+        
+        # Approximate coordinates for district names (x, y) on 300x300 canvas
+        districts = {
+            "Aurangabad (Chhatrapati Sambhajinagar)": (150, 50),
+            "Jalna": (200, 30),
+            "Beed": (120, 120),
+            "Osmanabad (Dharashiv)": (100, 180),
+            "Latur": (80, 250),
+            "Nanded": (220, 200),
+            "Parbhani": (180, 150),
+            "Hingoli": (240, 120)
+        }
+        
+        # Draw district names
+        for district, (x, y) in districts.items():
+            d.text((x, y), district, fill='black', font=font)
+            
     except Exception as e:
-        logger.error(f"Failed to load image from {url}: {e}")
+        logger.error(f"Error generating map image: {e}")
         return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+
+    # Convert to base64
+    buffered = io.BytesIO()
+    img.save(buffered, format="PNG")
+    return f"data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode()}"
 
 def create_pie_chart(year_data, year):
     categories = ['Extreme_Drought', 'Severe_Drought', 'Moderate_Drought', 'Extremely_Wet', 'Moderately_Wet', 'Near_Normal']
@@ -86,7 +115,6 @@ def create_metric_card(category, value, side):
     })
 
 app.layout = html.Div([
-    # Header with title and dropdowns
     html.Div([
         html.H1("Marathwada Drought Dashboard Comparison", 
                 style={'color': '#ffffff', 'margin': '0', 'font-size': '24px'}),
@@ -112,39 +140,25 @@ app.layout = html.Div([
         ], style={'display': 'flex', 'align-items': 'center'})
     ], style={'background': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 'padding': '15px', 'display': 'flex', 'justify-content': 'space-between', 'align-items': 'center'}),
     
-    # Main content area
     html.Div([
-        # Left column
         html.Div([
-            # Left map (priority)
             html.Div([
                 html.H4("Left Year", style={'text-align': 'center', 'margin': '5px 0', 'color': '#2c3e50'}),
                 html.Img(id='map-left', style={'width': '100%', 'height': '280px', 'object-fit': 'contain', 'border-radius': '8px'})
             ], style={'background': '#ffffff', 'padding': '10px', 'border-radius': '8px', 'box-shadow': '0 2px 8px rgba(0,0,0,0.1)', 'margin-bottom': '10px'}),
-            
-            # Left pie chart
             html.Div([
                 dcc.Graph(id='pie-left', style={'height': '250px'})
             ], style={'background': '#ffffff', 'border-radius': '8px', 'box-shadow': '0 2px 8px rgba(0,0,0,0.1)', 'margin-bottom': '10px'}),
-            
-            # Left metrics
             html.Div(id='metrics-left', style={'background': '#ffffff', 'padding': '10px', 'border-radius': '8px', 'box-shadow': '0 2px 8px rgba(0,0,0,0.1)'})
         ], style={'width': '48%'}),
-        
-        # Right column
         html.Div([
-            # Right map (priority)
             html.Div([
                 html.H4("Right Year", style={'text-align': 'center', 'margin': '5px 0', 'color': '#2c3e50'}),
                 html.Img(id='map-right', style={'width': '100%', 'height': '280px', 'object-fit': 'contain', 'border-radius': '8px'})
             ], style={'background': '#ffffff', 'padding': '10px', 'border-radius': '8px', 'box-shadow': '0 2px 8px rgba(0,0,0,0.1)', 'margin-bottom': '10px'}),
-            
-            # Right pie chart
             html.Div([
                 dcc.Graph(id='pie-right', style={'height': '250px'})
-            ], style={'background': '#ffffff', 'border-radius': '8px', 'box-shadow': '0 2px 8px rgba(0,0,0,0.1)', 'margin-bottom': '10px'}),
-            
-            # Right metrics
+            ], style={'background': '#ffffff', 'border-radius': '8px', 'box-shadow': '0 2px 8per8px rgba(0,0,0,0.1)', 'margin-bottom': '10px'}),
             html.Div(id='metrics-right', style={'background': '#ffffff', 'padding': '10px', 'border-radius': '8px', 'box-shadow': '0 2px 8px rgba(0,0,0,0.1)'})
         ], style={'width': '48%'})
     ], style={'display': 'flex', 'justify-content': 'space-between', 'padding': '15px', 'gap': '15px'})
@@ -164,19 +178,15 @@ def update_dashboard(year_left, year_right):
     if not year_left or not year_right:
         raise dash.exceptions.PreventUpdate
     
-    # Get data for selected years
     left_data = df[df['year'] == year_left]
     right_data = df[df['year'] == year_right]
     
-    # Get map images
-    map_left_src = get_image_base64(left_data['Map Images Left'].iloc[0])
-    map_right_src = get_image_base64(right_data['Map Images Left'].iloc[0])
+    map_left_src = get_image_base64(year_left)
+    map_right_src = get_image_base64(year_right)
     
-    # Create pie charts
     pie_left = create_pie_chart(left_data, year_left)
     pie_right = create_pie_chart(right_data, year_right)
     
-    # Create metric grids (3x2 layout)
     categories_grid = [
         ['Extreme_Drought', 'Severe_Drought', 'Moderate_Drought'],
         ['Extremely_Wet', 'Moderately_Wet', 'Near_Normal']
