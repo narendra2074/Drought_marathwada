@@ -4,20 +4,21 @@ import pandas as pd
 import plotly.graph_objects as go
 import base64
 import urllib.request
-import os  # For environment variables (e.g., PORT for Render)
-import logging  # For logging debug/info messages
-from flask import Flask  # For explicit server control
-import gunicorn  # For production server hint (used by Render)
+import os
+import logging
+from flask import Flask
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load data
-df = pd.read_csv(r'D:\App_dash\main_data_updated.csv')
+# Load data - use relative path for deployment
+df = pd.read_csv('main_data_updated.csv')
 years = sorted(df['year'].unique())
 
-app = dash.Dash(__name__, server=Flask(__name__))  # Use Flask server explicitly
+# Create Flask server
+server = Flask(__name__)
+app = dash.Dash(__name__, server=server)
 
 # Define colors for categories
 colors = {
@@ -197,5 +198,5 @@ def update_dashboard(year_left, year_right):
     return map_left_src, map_right_src, pie_left, pie_right, metrics_left, metrics_right
 
 if __name__ == '__main__':
-    logger.info("Starting Dash application locally on port 8081")
-    app.run(host="127.0.0.1", port=8081, debug=True)  # Local development
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host="0.0.0.0", port=port, debug=False)

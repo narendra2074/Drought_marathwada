@@ -1,5 +1,5 @@
-dash==3.2.0
-pandas==2.3.3
-plotly==6.3.1
-gunicorn==22.0.0
-flask==3.0.3  # Add this for Flask
+dash==2.14.1
+pandas==2.0.3
+plotly==5.17.0
+gunicorn==21.2.0
+flask==2.3.3
